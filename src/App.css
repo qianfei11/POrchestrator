@@ -155,7 +155,26 @@ button {
 
 .workspace-main {
   grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
-  align-items: start;
+  align-items: stretch;
+}
+
+.workspace-main > .panel {
+  height: clamp(380px, 50vh, 520px);
+  overflow: hidden;
+}
+
+.source-panel,
+.control-panel {
+  display: grid;
+  align-content: start;
+}
+
+.source-panel {
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+
+.control-panel {
+  grid-template-rows: auto minmax(0, 1fr) auto auto;
 }
 
 .section-heading {
@@ -338,6 +357,14 @@ textarea:disabled {
   gap: 10px;
 }
 
+.document-list,
+.control-grid {
+  min-height: 0;
+  align-content: start;
+  overflow: auto;
+  padding-right: 4px;
+}
+
 .brief-summary-grid {
   grid-template-columns: repeat(2, minmax(0, 1fr));
 }
@@ -457,6 +484,11 @@ textarea:disabled {
   margin-bottom: 10px;
 }
 
+.section-toggle {
+  flex: 0 0 auto;
+  min-width: 138px;
+}
+
 .preview-empty {
   min-height: 120px;
   display: grid;
@@ -496,6 +528,11 @@ textarea:disabled {
     grid-template-columns: 1fr;
   }
 
+  .workspace-main > .panel {
+    height: auto;
+    overflow: visible;
+  }
+
   .preview-grid {
     grid-template-columns: 1fr;
   }
@@ -523,6 +560,7 @@ textarea:disabled {
   .document-card,
   .action-row,
   .brief-hint,
+  .brief-subsection,
   .inline-heading,
   .modal-actions {
     flex-direction: column;

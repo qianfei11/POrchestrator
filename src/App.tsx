@@ -82,15 +82,22 @@ function App() {
   const [warning, setWarning] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [isBriefModalOpen, setIsBriefModalOpen] = useState(false);
+  const [isBriefSnapshotOpen, setIsBriefSnapshotOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const totalCharacters = documents.reduce(
     (total, document) => total + document.characters,
     0,
   );
+  const storedBriefFields = [audience, desiredOutcome, briefing].filter((value) =>
+    value.trim(),
+  ).length;
   const providerLabel =
     provider.kind === "openaiCompatible" ? "OpenAI style" : "Anthropic style";
   const settingsDigest = `${providerLabel} · ${provider.model} · ${maxSlides} slides · Visuals ${imageProvider.enabled ? imageProvider.model : "off"}`;
+  const briefSnapshotDigest = storedBriefFields
+    ? `${storedBriefFields} brief field${storedBriefFields === 1 ? "" : "s"} stored`
+    : "No brief stored yet";
 
   async function chooseDocuments() {
     if (!desktopRuntime) {
@@ -485,7 +492,7 @@ function App() {
         </section>
 
         <section className="workspace workspace-main">
-          <section className="panel">
+          <section className="panel source-panel">
             <div className="section-heading compact">
               <h2>Source Material</h2>
               <p>
@@ -535,30 +542,41 @@ function App() {
               )}
             </div>
 
-            <div className="subsection">
-              <div className="section-heading compact subsection-heading">
-                <h2>Brief Snapshot</h2>
-                <p>The editor still opens only when you click Generate Deck.</p>
+            <div className="subsection brief-subsection">
+              <div className="section-heading compact inline-heading subsection-heading">
+                <div>
+                  <h2>Brief Snapshot</h2>
+                  <p>{briefSnapshotDigest}. The editor still opens only when you click Generate Deck.</p>
+                </div>
+                <button
+                  className="ghost-button section-toggle"
+                  onClick={() => setIsBriefSnapshotOpen((current) => !current)}
+                  type="button"
+                >
+                  {isBriefSnapshotOpen ? "Hide Snapshot" : "Show Snapshot"}
+                </button>
               </div>
 
-              <div className="brief-summary-grid">
-                <article className="brief-summary-card">
-                  <span className="brief-label">Audience</span>
-                  <strong>{audience.trim() || "Not set"}</strong>
-                </article>
-                <article className="brief-summary-card">
-                  <span className="brief-label">Outcome</span>
-                  <strong>{desiredOutcome.trim() || "Not set"}</strong>
-                </article>
-                <article className="brief-summary-card span-2">
-                  <span className="brief-label">Prompt</span>
-                  <strong>
-                    {briefing.trim()
-                      ? `${briefing.trim().slice(0, 180)}${briefing.trim().length > 180 ? "..." : ""}`
-                      : "No prompt stored yet."}
-                  </strong>
-                </article>
-              </div>
+              {isBriefSnapshotOpen ? (
+                <div className="brief-summary-grid">
+                  <article className="brief-summary-card">
+                    <span className="brief-label">Audience</span>
+                    <strong>{audience.trim() || "Not set"}</strong>
+                  </article>
+                  <article className="brief-summary-card">
+                    <span className="brief-label">Outcome</span>
+                    <strong>{desiredOutcome.trim() || "Not set"}</strong>
+                  </article>
+                  <article className="brief-summary-card span-2">
+                    <span className="brief-label">Prompt</span>
+                    <strong>
+                      {briefing.trim()
+                        ? `${briefing.trim().slice(0, 180)}${briefing.trim().length > 180 ? "..." : ""}`
+                        : "No prompt stored yet."}
+                    </strong>
+                  </article>
+                </div>
+              ) : null}
             </div>
           </section>
 
