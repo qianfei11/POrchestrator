@@ -5,6 +5,8 @@ import "./App.css";
 import {
   PROVIDER_PRESETS,
   type DeckOutline,
+  type ExportPresentationRequest,
+  type ExportResult,
   type GeneratePresentationRequest,
   type GenerationResult,
   type ProviderKind,
@@ -33,6 +35,12 @@ function buildProvider(kind: ProviderKind): ProviderSettings {
   return { ...PROVIDER_PRESETS[kind] };
 }
 
+function providerSummary(kind: ProviderKind) {
+  return kind === "openaiCompatible"
+    ? "Uses /v1/chat/completions."
+    : "Uses /v1/messages with the Anthropic version header.";
+}
+
 function App() {
   const [provider, setProvider] = useState<ProviderSettings>(
     buildProvider("openaiCompatible"),
@@ -40,7 +48,6 @@ function App() {
   const [briefing, setBriefing] = useState("");
   const [audience, setAudience] = useState("");
   const [desiredOutcome, setDesiredOutcome] = useState("");
-  const [deckName, setDeckName] = useState("porchestrator-deck");
   const [maxSlides, setMaxSlides] = useState(8);
   const [documents, setDocuments] = useState<SourceDocument[]>([]);
   const [outputPath, setOutputPath] = useState("");
@@ -120,31 +127,45 @@ function App() {
 
   function switchProvider(kind: ProviderKind) {
     setProvider(buildProvider(kind));
+    setError("");
+    setStatus(providerSummary(kind));
   }
 
-  async function chooseOutputPath() {
+  async function exportDeck(outline: DeckOutline) {
     if (!desktopRuntime) {
       setError("Run Porchestrator inside the Tauri desktop shell to export PowerPoint files.");
       return null;
     }
 
     const selection = await save({
-      defaultPath: `${slugify(deckName)}.pptx`,
+      defaultPath: `${slugify(outline.deckTitle)}.pptx`,
       filters: [{ name: "PowerPoint deck", extensions: ["pptx"] }],
     });
 
     if (!selection) {
+      setStatus(`Outline ready for ${outline.deckTitle}. Export cancelled.`);
       return null;
     }
 
-    const normalizedPath = ensurePptxExtension(selection);
-    setOutputPath(normalizedPath);
-    return normalizedPath;
+    const request: ExportPresentationRequest = {
+      outline,
+      outputPath: ensurePptxExtension(selection),
+    };
+
+    const exportResult = await invoke<ExportResult>("export_presentation", {
+      request,
+    });
+
+    setOutputPath(exportResult.outputPath);
+    setStatus(
+      `Deck ready: ${exportResult.deckTitle} with ${exportResult.slideCount} slides.`,
+    );
+    return exportResult;
   }
 
   async function generateDeck() {
     setError("");
-    setResult(null);
+    setOutputPath("");
 
     if (!provider.apiKey.trim()) {
       setError("An API key is required.");
@@ -156,33 +177,24 @@ function App() {
       return;
     }
 
-    const selectedOutput = outputPath || (await chooseOutputPath());
-    if (!selectedOutput) {
-      setStatus("Export cancelled.");
-      return;
-    }
-
     const request: GeneratePresentationRequest = {
       provider,
       briefing,
       audience,
       desiredOutcome,
       maxSlides,
-      outputPath: selectedOutput,
       documents,
     };
 
     try {
       setIsBusy(true);
-      setStatus("Porchestrator is outlining slides and writing the .pptx...");
-      const generation = await invoke<GenerationResult>("generate_presentation", {
+      setStatus("Generating slide outline...");
+      const generation = await invoke<GenerationResult>("generate_outline", {
         request,
       });
       startTransition(() => setResult(generation));
-      setDeckName(slugify(generation.deckTitle));
-      setStatus(
-        `Deck ready: ${generation.deckTitle} with ${generation.slideCount} slides.`,
-      );
+      setStatus(`Outline ready for ${generation.deckTitle}. Opening save dialog...`);
+      await exportDeck(generation.outline);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setStatus("Deck generation failed.");
@@ -193,39 +205,38 @@ function App() {
 
   return (
     <main className="shell">
-      <section className="hero-panel panel">
-        <div className="hero-copy">
-          <p className="eyebrow">Desktop PowerPoint Agent</p>
+      <header className="topbar panel">
+        <div className="brand">
+          <p className="eyebrow">AI PowerPoint Agent</p>
           <h1>Porchestrator</h1>
-          <p className="hero-text">
-            Turn pasted context and source documents into polished PowerPoint
-            decks through a Rust backend with OpenAI-compatible and
-            Anthropic-compatible model adapters.
+          <p className="summary">
+            Rust backend, native desktop shell, and a compact retro-tech interface
+            for generating decks from briefs and source files.
           </p>
         </div>
 
-        <div className="hero-grid" aria-hidden="true">
-          <div className="pixel-card accent-green">
-            <span>LLM</span>
-            <strong>{provider.kind === "openaiCompatible" ? "OPENAI" : "ANTHROPIC"}</strong>
+        <div className="status-pills" aria-hidden="true">
+          <div className="status-pill">
+            <span>Provider</span>
+            <strong>{provider.kind === "openaiCompatible" ? "OpenAI" : "Anthropic"}</strong>
           </div>
-          <div className="pixel-card accent-gold">
+          <div className="status-pill">
             <span>Slides</span>
             <strong>{maxSlides}</strong>
           </div>
-          <div className="pixel-card accent-red">
+          <div className="status-pill">
             <span>Docs</span>
             <strong>{documents.length}</strong>
           </div>
         </div>
-      </section>
+      </header>
 
       <section className="workspace">
         <div className="left-column">
           <section className="panel">
-            <div className="section-heading">
-              <h2>Model Link</h2>
-              <p>Swap between OpenAI-style and Anthropic-style APIs without changing the workflow.</p>
+            <div className="section-heading compact">
+              <h2>LLM Settings</h2>
+              <p>{providerSummary(provider.kind)}</p>
             </div>
 
             <div className="segmented-control">
@@ -313,12 +324,18 @@ function App() {
                 />
               </label>
             </div>
+
+            <div className="api-note">
+              <strong>Defaults verified:</strong> OpenAI-compatible requests target
+              `chat/completions`; Anthropic-compatible requests target `messages`
+              with `anthropic-version: 2023-06-01`.
+            </div>
           </section>
 
           <section className="panel">
-            <div className="section-heading">
-              <h2>Briefing</h2>
-              <p>Paste requirements, business context, or speaking notes. The deck can also be created from files alone.</p>
+            <div className="section-heading compact">
+              <h2>Brief</h2>
+              <p>The LLM now supplies the deck title, and that title becomes the default output filename.</p>
             </div>
 
             <div className="form-grid">
@@ -327,7 +344,7 @@ function App() {
                 <input
                   value={audience}
                   onChange={(event) => setAudience(event.target.value)}
-                  placeholder="Executive team, clients, new hires..."
+                  placeholder="Board, clients, leadership..."
                 />
               </label>
               <label>
@@ -335,15 +352,7 @@ function App() {
                 <input
                   value={desiredOutcome}
                   onChange={(event) => setDesiredOutcome(event.target.value)}
-                  placeholder="Approval, status update, sales pitch..."
-                />
-              </label>
-              <label className="span-2">
-                Deck File Name
-                <input
-                  value={deckName}
-                  onChange={(event) => setDeckName(event.target.value)}
-                  placeholder="board-update-q2"
+                  placeholder="Approval, decision, status update..."
                 />
               </label>
               <label className="span-2">
@@ -352,7 +361,7 @@ function App() {
                   value={briefing}
                   onChange={(event) => setBriefing(event.target.value)}
                   rows={8}
-                  placeholder="Build an 8-slide investor update focused on product traction, risks, and next-quarter priorities..."
+                  placeholder="Summarize the uploaded material into a concise 8-slide product update for leadership..."
                 />
               </label>
             </div>
@@ -361,12 +370,12 @@ function App() {
 
         <div className="right-column">
           <section className="panel">
-            <div className="section-heading">
+            <div className="section-heading compact">
               <h2>Source Material</h2>
-              <p>Supports `.txt`, `.md`, `.pdf`, `.docx`, `.csv`, `.json`, `.yaml`, and `.toml`.</p>
+              <p>Readable text is extracted before the model call and trimmed to stay inside prompt bounds.</p>
             </div>
 
-            <div className="toolbar">
+            <div className="toolbar compact-toolbar">
               <button
                 className="primary-button"
                 onClick={() => void chooseDocuments()}
@@ -374,18 +383,10 @@ function App() {
               >
                 Load Documents
               </button>
-              <button
-                className="ghost-button"
-                onClick={() => void chooseOutputPath()}
-                type="button"
-              >
-                Pick Export Path
-              </button>
-            </div>
-
-            <div className="status-row">
-              <span>{documents.length} files</span>
-              <span>{totalCharacters.toLocaleString()} chars</span>
+              <div className="totals">
+                <span>{documents.length} files</span>
+                <span>{totalCharacters.toLocaleString()} chars</span>
+              </div>
             </div>
 
             <div className="document-list">
@@ -396,7 +397,7 @@ function App() {
                       <h3>{document.name}</h3>
                       <p>
                         {document.extension || "text"} · {document.characters.toLocaleString()} chars
-                        {document.truncated ? " · truncated for prompt safety" : ""}
+                        {document.truncated ? " · truncated" : ""}
                       </p>
                     </div>
                     <button
@@ -417,41 +418,51 @@ function App() {
           </section>
 
           <section className="panel">
-            <div className="section-heading">
-              <h2>Launch</h2>
-              <p>{desktopRuntime ? "Ready for desktop generation." : "Preview mode only. Launch with Tauri for full functionality."}</p>
+            <div className="section-heading compact">
+              <h2>Run</h2>
+              <p>{desktopRuntime ? "Generate first, then save with the LLM title." : "Preview mode only. Launch through Tauri for desktop generation."}</p>
             </div>
 
             <div className="status-block">
               <p>{status}</p>
-              <p className="path-label">{outputPath || "No export path selected yet."}</p>
+              <p className="path-label">{outputPath || "No deck exported yet."}</p>
             </div>
 
             {error ? <div className="error-banner">{error}</div> : null}
 
-            <button
-              className="primary-button large"
-              disabled={isBusy}
-              onClick={() => void generateDeck()}
-              type="button"
-            >
-              {isBusy ? "Generating..." : "Generate PowerPoint"}
-            </button>
+            <div className="action-row">
+              <button
+                className="primary-button large"
+                disabled={isBusy}
+                onClick={() => void generateDeck()}
+                type="button"
+              >
+                {isBusy ? "Working..." : "Generate Deck"}
+              </button>
+              <button
+                className="ghost-button large"
+                disabled={isBusy || !result}
+                onClick={() => void (result ? exportDeck(result.outline) : Promise.resolve())}
+                type="button"
+              >
+                Save Again
+              </button>
+            </div>
           </section>
         </div>
       </section>
 
       <section className="panel preview-panel">
-        <div className="section-heading">
+        <div className="section-heading compact">
           <h2>Deck Preview</h2>
-          <p>Structured outline returned by the model and written into the exported `.pptx`.</p>
+          <p>Outline returned by the model before the PowerPoint file is written.</p>
         </div>
 
         {result ? (
-          <DeckPreview outline={result.outline} outputPath={result.outputPath} />
+          <DeckPreview outline={result.outline} outputPath={outputPath} />
         ) : (
           <div className="empty-state preview-empty">
-            <p>Generate a deck to inspect the slide outline and export path.</p>
+            <p>Generate a deck to inspect the outline.</p>
           </div>
         )}
       </section>
@@ -469,18 +480,18 @@ function DeckPreview({
   return (
     <div className="preview-grid">
       <article className="preview-summary">
-        <p className="eyebrow">Output</p>
+        <p className="eyebrow">LLM Title</p>
         <h3>{outline.deckTitle}</h3>
         <p>{outline.subtitle}</p>
         <p className="theme-tag">{outline.themeTagline}</p>
-        <p className="path-label">{outputPath}</p>
+        <p className="path-label">{outputPath || "Not exported yet."}</p>
       </article>
 
       <div className="slide-grid">
         {outline.slides.map((slide, index) => (
           <article className="slide-card" key={`${slide.title}-${index}`}>
             <div className="slide-meta">
-              <span>0{index + 1}</span>
+              <span>{String(index + 1).padStart(2, "0")}</span>
               <span>{slide.layout}</span>
             </div>
             <h3>{slide.title}</h3>

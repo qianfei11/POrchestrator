@@ -88,7 +88,7 @@ async fn request_anthropic_style(
             "system": system_prompt,
             "messages": [{
                 "role": "user",
-                "content": [{ "type": "text", "text": user_prompt }]
+                "content": user_prompt
             }]
         }))
         .send()

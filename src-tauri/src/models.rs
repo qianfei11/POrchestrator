@@ -41,7 +41,6 @@ pub struct GeneratePresentationRequest {
     #[serde(default)]
     pub desired_outcome: String,
     pub max_slides: u8,
-    pub output_path: String,
     #[serde(default)]
     pub documents: Vec<SourceDocument>,
 }
@@ -49,11 +48,25 @@ pub struct GeneratePresentationRequest {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct GenerationResult {
-    pub output_path: String,
     pub deck_title: String,
     pub subtitle: String,
     pub slide_count: usize,
     pub outline: DeckOutline,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportPresentationRequest {
+    pub outline: DeckOutline,
+    pub output_path: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ExportResult {
+    pub output_path: String,
+    pub deck_title: String,
+    pub slide_count: usize,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

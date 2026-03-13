@@ -23,8 +23,12 @@ export interface GeneratePresentationRequest {
   audience: string;
   desiredOutcome: string;
   maxSlides: number;
-  outputPath: string;
   documents: SourceDocument[];
+}
+
+export interface ExportPresentationRequest {
+  outline: DeckOutline;
+  outputPath: string;
 }
 
 export interface DeckSlide {
@@ -43,11 +47,16 @@ export interface DeckOutline {
 }
 
 export interface GenerationResult {
-  outputPath: string;
   deckTitle: string;
   subtitle: string;
   slideCount: number;
   outline: DeckOutline;
+}
+
+export interface ExportResult {
+  outputPath: string;
+  deckTitle: string;
+  slideCount: number;
 }
 
 export const PROVIDER_PRESETS: Record<ProviderKind, ProviderSettings> = {
@@ -61,7 +70,7 @@ export const PROVIDER_PRESETS: Record<ProviderKind, ProviderSettings> = {
   anthropicCompatible: {
     kind: "anthropicCompatible",
     baseUrl: "https://api.anthropic.com/v1",
-    model: "claude-3-5-sonnet-latest",
+    model: "claude-sonnet-4-20250514",
     apiKey: "",
     temperature: 0.4,
   },

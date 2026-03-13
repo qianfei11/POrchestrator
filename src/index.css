@@ -1,19 +1,20 @@
 :root {
   color-scheme: light;
   font-synthesis: none;
-  text-rendering: geometricPrecision;
-  -webkit-font-smoothing: none;
-  -moz-osx-font-smoothing: auto;
-  --paper: #f3ead0;
-  --paper-bright: #fffced;
-  --paper-shadow: rgba(242, 193, 78, 0.16);
-  --ink: #11243a;
-  --muted-ink: #39506c;
-  --signal-green: #39b58a;
-  --signal-gold: #f2c14e;
-  --signal-red: #f26a4b;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  --ink: #102239;
+  --muted-ink: #526173;
+  --line: #cdd7e0;
+  --accent: #3f87f5;
+  --accent-soft: #e5f0ff;
+  --accent-strong: #1b5fca;
+  --panel: #f6f8fb;
+  --panel-strong: #ffffff;
+  --panel-hover: #f2f6fc;
   --heading-font: "Press Start 2P", cursive;
-  --body-font: "VT323", monospace;
+  --body-font: "Chakra Petch", sans-serif;
 }
 
 html,
@@ -25,20 +26,12 @@ body,
 body {
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.32) 0%, rgba(255, 255, 255, 0) 30%),
-    linear-gradient(90deg, rgba(17, 36, 58, 0.05) 1px, transparent 1px),
-    linear-gradient(rgba(17, 36, 58, 0.05) 1px, transparent 1px),
-    radial-gradient(circle at top left, #faf4da 0%, #f3ead0 45%, #e8ddb8 100%);
-  background-size: auto, 18px 18px, 18px 18px, auto;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)),
+    linear-gradient(90deg, rgba(16, 34, 57, 0.04) 1px, transparent 1px),
+    linear-gradient(rgba(16, 34, 57, 0.04) 1px, transparent 1px),
+    #e9eff5;
+  background-size: auto, 24px 24px, 24px 24px, auto;
   color: var(--ink);
-}
-
-body::before {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(180deg, rgba(17, 36, 58, 0.02) 0%, rgba(17, 36, 58, 0) 50%, rgba(17, 36, 58, 0.03) 100%);
-  pointer-events: none;
 }
 
 #root {

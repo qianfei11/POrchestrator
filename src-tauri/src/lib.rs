@@ -3,7 +3,10 @@ mod llm;
 mod models;
 mod presentation;
 
-use models::{GeneratePresentationRequest, GenerationResult, SourceDocument};
+use models::{
+    ExportPresentationRequest, ExportResult, GeneratePresentationRequest, GenerationResult,
+    SourceDocument,
+};
 
 fn format_error(error: anyhow::Error) -> String {
     let mut chain = error.chain();
@@ -22,21 +25,30 @@ async fn ingest_documents(paths: Vec<String>) -> Result<Vec<SourceDocument>, Str
 }
 
 #[tauri::command]
-async fn generate_presentation(
+async fn generate_outline(
     request: GeneratePresentationRequest,
 ) -> Result<GenerationResult, String> {
     let outline = llm::generate_outline(&request)
         .await
         .map_err(format_error)?;
 
-    presentation::write_presentation(&outline, &request.output_path).map_err(format_error)?;
-
     Ok(GenerationResult {
-        output_path: request.output_path.clone(),
         deck_title: outline.deck_title.clone(),
         subtitle: outline.subtitle.clone(),
         slide_count: outline.slides.len(),
         outline,
+    })
+}
+
+#[tauri::command]
+async fn export_presentation(request: ExportPresentationRequest) -> Result<ExportResult, String> {
+    presentation::write_presentation(&request.outline, &request.output_path)
+        .map_err(format_error)?;
+
+    Ok(ExportResult {
+        output_path: request.output_path,
+        deck_title: request.outline.deck_title,
+        slide_count: request.outline.slides.len(),
     })
 }
 
@@ -46,7 +58,8 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             ingest_documents,
-            generate_presentation
+            generate_outline,
+            export_presentation
         ])
         .run(tauri::generate_context!())
         .expect("error while running Porchestrator");
