@@ -5,12 +5,12 @@ use std::{
 };
 
 use anyhow::{Context, Result, anyhow};
+use ppt_rs::generator::images::ImageSource;
 use ppt_rs::generator::{
-    Image, SlideContent, SlideLayout, Shape, ShapeFill, ShapeGradientDirection, ShapeGradientFill,
-    ShapeLine, ShapeType, create_pptx_with_content, generate_image_content_type,
-    generate_image_relationship, generate_image_xml, inches_to_emu,
+    Image, Shape, ShapeFill, ShapeLine, ShapeType, SlideContent, SlideLayout,
+    create_pptx_with_content, generate_image_content_type, generate_image_relationship,
+    generate_image_xml, inches_to_emu,
 };
-use ppt_rs::generator::images::{ImageEffect, ImageSource};
 use zip::{ZipArchive, ZipWriter, write::FileOptions};
 
 use crate::{
@@ -112,7 +112,11 @@ fn build_slide(
     slide: &DeckSlide,
     index: usize,
     rendered_image: Option<&GeneratedSlideImage>,
-) -> (SlideContent, Option<EmbeddedImageSpec>, BackgroundDecoration) {
+) -> (
+    SlideContent,
+    Option<EmbeddedImageSpec>,
+    BackgroundDecoration,
+) {
     let has_image = rendered_image.is_some();
     let layout = resolve_layout(slide, has_image);
     let title_size = resolve_title_size(slide, has_image);
@@ -232,12 +236,8 @@ fn build_embedded_image_spec(
         ),
     };
 
-    let (width, height) = fit_image_within_box(
-        rendered.width_px,
-        rendered.height_px,
-        box_width,
-        box_height,
-    );
+    let (width, height) =
+        fit_image_within_box(rendered.width_px, rendered.height_px, box_width, box_height);
     let x = box_x + (box_width.saturating_sub(width) / 2);
     let y = box_y + (box_height.saturating_sub(height) / 2);
     let format = normalize_format(&rendered.format);
@@ -292,15 +292,18 @@ fn build_background_decoration(
     slide: &DeckSlide,
     image: Option<&EmbeddedImageSpec>,
 ) -> BackgroundDecoration {
+    let slide_index = slide_number as u32;
+    let base_color = background_fill_color(slide.layout.clone());
+    let rail_color = accent_fill_color(slide.layout.clone());
+    let footer_color = footer_fill_color(slide.layout.clone());
     let mut shapes = vec![
         (
-            300 + slide_number as u32 * 10,
-            Shape::new(ShapeType::Rectangle, 0, 0, SLIDE_WIDTH, SLIDE_HEIGHT).with_gradient(
-                background_gradient(slide.layout.clone()),
-            ),
+            300 + slide_index * 10,
+            Shape::new(ShapeType::Rectangle, 0, 0, SLIDE_WIDTH, SLIDE_HEIGHT)
+                .with_fill(ShapeFill::new(base_color)),
         ),
         (
-            301 + slide_number as u32 * 10,
+            301 + slide_index * 10,
             Shape::new(
                 ShapeType::Rectangle,
                 0,
@@ -308,10 +311,10 @@ fn build_background_decoration(
                 inches_to_emu(0.24),
                 SLIDE_HEIGHT,
             )
-            .with_fill(ShapeFill::new(ACCENT_COLOR).with_transparency(16)),
+            .with_fill(ShapeFill::new(rail_color)),
         ),
         (
-            302 + slide_number as u32 * 10,
+            302 + slide_index * 10,
             Shape::new(
                 ShapeType::Rectangle,
                 0,
@@ -319,13 +322,40 @@ fn build_background_decoration(
                 SLIDE_WIDTH,
                 inches_to_emu(0.26),
             )
-            .with_fill(ShapeFill::new("DCEBFF").with_transparency(12)),
+            .with_fill(ShapeFill::new(footer_color)),
         ),
     ];
 
+    match slide.layout {
+        SlideLayoutHint::Cover => shapes.push((
+            303 + slide_index * 10,
+            Shape::new(
+                ShapeType::Rectangle,
+                inches_to_emu(0.42),
+                inches_to_emu(0.54),
+                inches_to_emu(3.82),
+                inches_to_emu(0.16),
+            )
+            .with_fill(ShapeFill::new(rail_color)),
+        )),
+        SlideLayoutHint::Visual => shapes.push((
+            303 + slide_index * 10,
+            Shape::new(
+                ShapeType::Rectangle,
+                inches_to_emu(5.0),
+                inches_to_emu(1.36),
+                inches_to_emu(3.6),
+                inches_to_emu(3.98),
+            )
+            .with_fill(ShapeFill::new("F7FAFF"))
+            .with_line(ShapeLine::new("9FB3D1", 12000)),
+        )),
+        _ => {}
+    }
+
     if let Some(image) = image {
         shapes.push((
-            303 + slide_number as u32 * 10,
+            304 + slide_index * 10,
             Shape::new(
                 ShapeType::Rectangle,
                 image.x.saturating_sub(inches_to_emu(0.08)),
@@ -333,12 +363,7 @@ fn build_background_decoration(
                 image.width + inches_to_emu(0.16),
                 image.height + inches_to_emu(0.16),
             )
-            .with_gradient(ShapeGradientFill::three_color(
-                "E6F0FF",
-                "D5E5FF",
-                "B7CCFF",
-                ShapeGradientDirection::DiagonalDown,
-            ))
+            .with_fill(ShapeFill::new(image_frame_fill_color(slide.layout.clone())))
             .with_line(ShapeLine::new("89A8E8", 16000)),
         ));
     }
@@ -349,32 +374,36 @@ fn build_background_decoration(
     }
 }
 
-fn background_gradient(layout: SlideLayoutHint) -> ShapeGradientFill {
+fn background_fill_color(layout: SlideLayoutHint) -> &'static str {
     match layout {
-        SlideLayoutHint::Cover => ShapeGradientFill::three_color(
-            "F9FCFF",
-            "EAF2FF",
-            "DCEAFF",
-            ShapeGradientDirection::DiagonalDown,
-        ),
-        SlideLayoutHint::Visual => ShapeGradientFill::three_color(
-            "FFFFFF",
-            "EDF4FF",
-            "DAE9FF",
-            ShapeGradientDirection::Horizontal,
-        ),
-        SlideLayoutHint::Closing => ShapeGradientFill::three_color(
-            "FFF9F2",
-            "FFF1E2",
-            "FFE7D3",
-            ShapeGradientDirection::Horizontal,
-        ),
-        _ => ShapeGradientFill::three_color(
-            "FFFFFF",
-            "F4F8FF",
-            "EDF4FF",
-            ShapeGradientDirection::Vertical,
-        ),
+        SlideLayoutHint::Cover => "F5F9FF",
+        SlideLayoutHint::Visual => "FFFFFF",
+        SlideLayoutHint::Closing => "FFF8EF",
+        SlideLayoutHint::TwoColumn => "F9FBFF",
+        SlideLayoutHint::Standard => "FCFDFF",
+    }
+}
+
+fn accent_fill_color(layout: SlideLayoutHint) -> &'static str {
+    match layout {
+        SlideLayoutHint::Closing => "F26A4B",
+        _ => ACCENT_COLOR,
+    }
+}
+
+fn footer_fill_color(layout: SlideLayoutHint) -> &'static str {
+    match layout {
+        SlideLayoutHint::Closing => "FFE7D6",
+        SlideLayoutHint::Cover => "DCE8FF",
+        _ => "E8F0FF",
+    }
+}
+
+fn image_frame_fill_color(layout: SlideLayoutHint) -> &'static str {
+    match layout {
+        SlideLayoutHint::Cover => "E6EEFF",
+        SlideLayoutHint::Closing => "FFF1E4",
+        _ => "F0F5FF",
     }
 }
 
@@ -441,7 +470,9 @@ fn inject_embedded_assets(
             let xml = String::from_utf8(entry.data.clone())
                 .with_context(|| format!("Could not read {} as UTF-8.", entry.name))?;
             entry.data = inject_slide_relationships(&xml, slide_number, &mutable_images)
-                .with_context(|| format!("Could not inject image relationships into {}.", entry.name))?
+                .with_context(|| {
+                    format!("Could not inject image relationships into {}.", entry.name)
+                })?
                 .into_bytes();
         }
     }
@@ -486,7 +517,12 @@ fn assign_relationship_ids(
         let rels_xml = entries
             .iter()
             .find(|entry| entry.name == rels_name)
-            .ok_or_else(|| anyhow!("Missing relationship file for slide {}.", image.slide_number))?;
+            .ok_or_else(|| {
+                anyhow!(
+                    "Missing relationship file for slide {}.",
+                    image.slide_number
+                )
+            })?;
         let rels_text = String::from_utf8(rels_xml.data.clone())
             .with_context(|| format!("Could not read {rels_name} as UTF-8."))?;
         image.rel_id = next_relationship_id(&rels_text);
@@ -607,7 +643,10 @@ fn write_package_entries(entries: Vec<PackageEntry>) -> Result<Vec<u8>> {
     Ok(writer.finish()?.into_inner())
 }
 
-fn write_local_image_assets(output_path: &str, embedded_images: &[EmbeddedImageSpec]) -> Result<()> {
+fn write_local_image_assets(
+    output_path: &str,
+    embedded_images: &[EmbeddedImageSpec],
+) -> Result<()> {
     let output_path = Path::new(output_path);
     let assets_dir = assets_directory_for(output_path);
     fs::create_dir_all(&assets_dir)?;
@@ -700,7 +739,11 @@ fn slugify(input: &str) -> String {
 
 impl EmbeddedImageSpec {
     fn package_path(&self) -> String {
-        format!("ppt/media/image{}.{}", self.image_number, extension_for_format(&self.format))
+        format!(
+            "ppt/media/image{}.{}",
+            self.image_number,
+            extension_for_format(&self.format)
+        )
     }
 
     fn to_xml(&self) -> String {
@@ -713,14 +756,21 @@ impl EmbeddedImageSpec {
             format: self.format.clone(),
             source: Some(ImageSource::Bytes(self.bytes.clone())),
             crop: None,
-            effects: vec![ImageEffect::Shadow],
+            effects: Vec::new(),
         };
 
         generate_image_xml(&image, self.shape_id, self.rel_id)
     }
 
     fn to_relationship_xml(&self) -> String {
-        generate_image_relationship(self.rel_id, &format!("../media/image{}.{}", self.image_number, extension_for_format(&self.format)))
+        generate_image_relationship(
+            self.rel_id,
+            &format!(
+                "../media/image{}.{}",
+                self.image_number,
+                extension_for_format(&self.format)
+            ),
+        )
     }
 }
 
@@ -729,9 +779,12 @@ mod tests {
     use super::*;
     use base64::Engine;
     use ppt_rs::generator::SlideContent;
+    use std::{
+        process::Command,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
-    const TINY_PNG_BASE64: &str =
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
+    const TINY_PNG_BASE64: &str = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==";
 
     #[test]
     fn injects_embedded_images_into_package() {
@@ -781,7 +834,77 @@ mod tests {
             .unwrap();
         assert!(rels_xml.contains("relationships/image"));
 
+        let mut content_types_xml = String::new();
+        archive
+            .by_name("[Content_Types].xml")
+            .unwrap()
+            .read_to_string(&mut content_types_xml)
+            .unwrap();
+        assert!(content_types_xml.contains("Extension=\"png\""));
+
         let media = archive.by_name("ppt/media/image1.png");
         assert!(media.is_ok());
+    }
+
+    #[test]
+    fn writes_presentation_libreoffice_can_open_when_available() {
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let output_dir = std::env::temp_dir().join(format!("porchestrator-smoke-{unique}"));
+        fs::create_dir_all(&output_dir).unwrap();
+
+        let output_path = output_dir.join("smoke-deck.pptx");
+        let outline = DeckOutline {
+            deck_title: "Smoke Deck".to_string(),
+            subtitle: "Validation export".to_string(),
+            theme_tagline: "Clear structure and embedded visuals".to_string(),
+            slides: vec![DeckSlide {
+                title: "Smoke Cover".to_string(),
+                layout: SlideLayoutHint::Cover,
+                bullets: vec![
+                    "Valid OOXML package with embedded media.".to_string(),
+                    "Local assets folder written beside the deck.".to_string(),
+                ],
+                speaker_notes: String::new(),
+                highlight: "Regression guard".to_string(),
+                image_prompt: "A bright geometric hero visual".to_string(),
+                image_caption: "Smoke visual".to_string(),
+            }],
+        };
+        let image = GeneratedSlideImage {
+            bytes: base64::engine::general_purpose::STANDARD
+                .decode(TINY_PNG_BASE64)
+                .unwrap(),
+            width_px: 1,
+            height_px: 1,
+            format: "PNG".to_string(),
+        };
+
+        write_presentation(&outline, output_path.to_str().unwrap(), &[Some(image)]).unwrap();
+
+        assert!(output_path.exists());
+        assert!(
+            assets_directory_for(&output_path)
+                .join("slide-01-smoke-cover.png")
+                .exists()
+        );
+
+        match Command::new("libreoffice")
+            .args([
+                "--headless",
+                "--convert-to",
+                "pdf",
+                "--outdir",
+                output_dir.to_str().unwrap(),
+                output_path.to_str().unwrap(),
+            ])
+            .status()
+        {
+            Ok(status) => assert!(status.success(), "LibreOffice rejected the generated deck."),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+            Err(error) => panic!("LibreOffice smoke test failed to start: {error}"),
+        }
     }
 }

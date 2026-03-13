@@ -82,11 +82,15 @@ function App() {
   const [warning, setWarning] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [isBriefModalOpen, setIsBriefModalOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const totalCharacters = documents.reduce(
     (total, document) => total + document.characters,
     0,
   );
+  const providerLabel =
+    provider.kind === "openaiCompatible" ? "OpenAI style" : "Anthropic style";
+  const settingsDigest = `${providerLabel} · ${provider.model} · ${maxSlides} slides · Visuals ${imageProvider.enabled ? imageProvider.model : "off"}`;
 
   async function chooseDocuments() {
     if (!desktopRuntime) {
@@ -280,20 +284,18 @@ function App() {
   return (
     <>
       <main className="shell">
-        <header className="topbar panel">
+        <header className="topbar topbar-compact panel">
           <div className="brand">
-            <p className="eyebrow">AI PowerPoint Agent</p>
             <h1>Porchestrator</h1>
             <p className="summary">
-              Rust backend, native desktop shell, and a tighter retro-tech layout
-              for turning source files into clean PowerPoint decks.
+              Desktop PowerPoint generation with a Rust backend and a cleaner, bounded workspace.
             </p>
           </div>
 
           <div className="status-pills" aria-hidden="true">
             <div className="status-pill">
-              <span>Provider</span>
-              <strong>{provider.kind === "openaiCompatible" ? "OpenAI" : "Anthropic"}</strong>
+              <span>Model</span>
+              <strong>{provider.model}</strong>
             </div>
             <div className="status-pill">
               <span>Visuals</span>
@@ -310,172 +312,186 @@ function App() {
           </div>
         </header>
 
-        <section className="workspace">
-          <section className="panel">
-            <div className="section-heading compact">
+        <section className="panel settings-panel">
+          <div className="section-heading compact inline-heading">
+            <div>
               <h2>LLM Settings</h2>
-              <p>{providerSummary(provider.kind)}</p>
+              <p>{settingsDigest}</p>
             </div>
+            <button
+              className="ghost-button"
+              onClick={() => setIsSettingsOpen((current) => !current)}
+              type="button"
+            >
+              {isSettingsOpen ? "Hide Settings" : "Show Settings"}
+            </button>
+          </div>
 
-            <div className="segmented-control">
-              <button
-                className={provider.kind === "openaiCompatible" ? "active" : ""}
-                onClick={() => switchProvider("openaiCompatible")}
-                type="button"
-              >
-                OpenAI Style
-              </button>
-              <button
-                className={provider.kind === "anthropicCompatible" ? "active" : ""}
-                onClick={() => switchProvider("anthropicCompatible")}
-                type="button"
-              >
-                Anthropic Style
-              </button>
-            </div>
-
-            <div className="form-grid">
-              <label>
-                Base URL
-                <input
-                  value={provider.baseUrl}
-                  onChange={(event) => updateProvider("baseUrl", event.target.value)}
-                  placeholder="https://api.openai.com/v1"
-                />
-              </label>
-              <label>
-                Model
-                <input
-                  value={provider.model}
-                  onChange={(event) => updateProvider("model", event.target.value)}
-                  placeholder="gpt-4.1-mini"
-                />
-              </label>
-              <label className="span-2">
-                API Key
-                <input
-                  type="password"
-                  value={provider.apiKey}
-                  onChange={(event) => updateProvider("apiKey", event.target.value)}
-                  placeholder="sk-..."
-                />
-              </label>
-              <label>
-                Temperature
-                <input
-                  type="number"
-                  min="0"
-                  max="1.2"
-                  step="0.1"
-                  value={provider.temperature}
-                  onChange={(event) =>
-                    updateProvider("temperature", Number(event.target.value))
-                  }
-                />
-              </label>
-              <label>
-                Slide Budget
-                <input
-                  type="number"
-                  min={MIN_SLIDE_BUDGET}
-                  max={MAX_SLIDE_BUDGET}
-                  value={maxSlides}
-                  onChange={(event) =>
-                    setMaxSlides(clampSlideBudget(Number(event.target.value)))
-                  }
-                />
-              </label>
-            </div>
-
-            <div className="api-note">
-              <strong>Defaults verified:</strong> OpenAI-compatible requests target
-              `chat/completions`; Anthropic-compatible requests target `messages`
-              with `anthropic-version: 2023-06-01`.
-            </div>
-
-            <div className="subsection">
-              <div className="section-heading compact subsection-heading">
-                <h2>Image Generation</h2>
-                <p>{imageProviderSummary(imageProvider.enabled)}</p>
-              </div>
-
+          {isSettingsOpen ? (
+            <div className="settings-body">
               <div className="segmented-control">
                 <button
-                  className={!imageProvider.enabled ? "active" : ""}
-                  onClick={() => updateImageProvider("enabled", false)}
+                  className={provider.kind === "openaiCompatible" ? "active" : ""}
+                  onClick={() => switchProvider("openaiCompatible")}
                   type="button"
                 >
-                  Visuals Off
+                  OpenAI Style
                 </button>
                 <button
-                  className={imageProvider.enabled ? "active" : ""}
-                  onClick={() => updateImageProvider("enabled", true)}
+                  className={provider.kind === "anthropicCompatible" ? "active" : ""}
+                  onClick={() => switchProvider("anthropicCompatible")}
                   type="button"
                 >
-                  Visuals On
+                  Anthropic Style
                 </button>
               </div>
 
               <div className="form-grid">
                 <label>
-                  Image Base URL
+                  Base URL
                   <input
-                    disabled={!imageProvider.enabled}
-                    value={imageProvider.baseUrl}
-                    onChange={(event) =>
-                      updateImageProvider("baseUrl", event.target.value)
-                    }
+                    value={provider.baseUrl}
+                    onChange={(event) => updateProvider("baseUrl", event.target.value)}
                     placeholder="https://api.openai.com/v1"
                   />
                 </label>
                 <label>
-                  Image Model
+                  Model
                   <input
-                    disabled={!imageProvider.enabled}
-                    value={imageProvider.model}
-                    onChange={(event) =>
-                      updateImageProvider("model", event.target.value)
-                    }
-                    placeholder="gpt-image-1 or nano-banana-2"
+                    value={provider.model}
+                    onChange={(event) => updateProvider("model", event.target.value)}
+                    placeholder="gpt-4.1-mini"
                   />
                 </label>
                 <label className="span-2">
-                  Image API Key
+                  API Key
                   <input
-                    disabled={!imageProvider.enabled}
                     type="password"
-                    value={imageProvider.apiKey}
-                    onChange={(event) =>
-                      updateImageProvider("apiKey", event.target.value)
-                    }
+                    value={provider.apiKey}
+                    onChange={(event) => updateProvider("apiKey", event.target.value)}
                     placeholder="sk-..."
                   />
                 </label>
                 <label>
-                  Image Size
+                  Temperature
                   <input
-                    disabled={!imageProvider.enabled}
-                    value={imageProvider.size}
+                    type="number"
+                    min="0"
+                    max="1.2"
+                    step="0.1"
+                    value={provider.temperature}
                     onChange={(event) =>
-                      updateImageProvider("size", event.target.value)
+                      updateProvider("temperature", Number(event.target.value))
                     }
-                    placeholder="1536x1024"
+                  />
+                </label>
+                <label>
+                  Slide Budget
+                  <input
+                    type="number"
+                    min={MIN_SLIDE_BUDGET}
+                    max={MAX_SLIDE_BUDGET}
+                    value={maxSlides}
+                    onChange={(event) =>
+                      setMaxSlides(clampSlideBudget(Number(event.target.value)))
+                    }
                   />
                 </label>
               </div>
 
               <div className="api-note">
-                <strong>Image API:</strong> OpenAI-compatible `images/generations`
-                with model names such as `gpt-image-1` or compatible deployments
-                like `nano-banana-2`.
+                <strong>Defaults verified:</strong> {providerSummary(provider.kind)}
+              </div>
+
+              <div className="subsection">
+                <div className="section-heading compact subsection-heading">
+                  <h2>Image Generation</h2>
+                  <p>{imageProviderSummary(imageProvider.enabled)}</p>
+                </div>
+
+                <div className="segmented-control">
+                  <button
+                    className={!imageProvider.enabled ? "active" : ""}
+                    onClick={() => updateImageProvider("enabled", false)}
+                    type="button"
+                  >
+                    Visuals Off
+                  </button>
+                  <button
+                    className={imageProvider.enabled ? "active" : ""}
+                    onClick={() => updateImageProvider("enabled", true)}
+                    type="button"
+                  >
+                    Visuals On
+                  </button>
+                </div>
+
+                <div className="form-grid">
+                  <label>
+                    Image Base URL
+                    <input
+                      disabled={!imageProvider.enabled}
+                      value={imageProvider.baseUrl}
+                      onChange={(event) =>
+                        updateImageProvider("baseUrl", event.target.value)
+                      }
+                      placeholder="https://api.openai.com/v1"
+                    />
+                  </label>
+                  <label>
+                    Image Model
+                    <input
+                      disabled={!imageProvider.enabled}
+                      value={imageProvider.model}
+                      onChange={(event) =>
+                        updateImageProvider("model", event.target.value)
+                      }
+                      placeholder="gpt-image-1 or nano-banana-2"
+                    />
+                  </label>
+                  <label className="span-2">
+                    Image API Key
+                    <input
+                      disabled={!imageProvider.enabled}
+                      type="password"
+                      value={imageProvider.apiKey}
+                      onChange={(event) =>
+                        updateImageProvider("apiKey", event.target.value)
+                      }
+                      placeholder="sk-..."
+                    />
+                  </label>
+                  <label>
+                    Image Size
+                    <input
+                      disabled={!imageProvider.enabled}
+                      value={imageProvider.size}
+                      onChange={(event) =>
+                        updateImageProvider("size", event.target.value)
+                      }
+                      placeholder="1536x1024"
+                    />
+                  </label>
+                </div>
+
+                <div className="api-note">
+                  <strong>Image API:</strong> OpenAI-compatible `images/generations`
+                  with models such as `gpt-image-1` or compatible deployments
+                  like `nano-banana-2`.
+                </div>
               </div>
             </div>
-          </section>
+          ) : null}
+        </section>
 
+        <section className="workspace workspace-main">
           <section className="panel">
             <div className="section-heading compact">
               <h2>Source Material</h2>
-              <p>Readable text is extracted before the model call and trimmed to stay inside prompt bounds.</p>
+              <p>
+                Readable text is extracted before the model call and trimmed to
+                stay inside prompt bounds.
+              </p>
             </div>
 
             <div className="toolbar compact-toolbar">
@@ -518,51 +534,84 @@ function App() {
                 </div>
               )}
             </div>
+
+            <div className="subsection">
+              <div className="section-heading compact subsection-heading">
+                <h2>Brief Snapshot</h2>
+                <p>The editor still opens only when you click Generate Deck.</p>
+              </div>
+
+              <div className="brief-summary-grid">
+                <article className="brief-summary-card">
+                  <span className="brief-label">Audience</span>
+                  <strong>{audience.trim() || "Not set"}</strong>
+                </article>
+                <article className="brief-summary-card">
+                  <span className="brief-label">Outcome</span>
+                  <strong>{desiredOutcome.trim() || "Not set"}</strong>
+                </article>
+                <article className="brief-summary-card span-2">
+                  <span className="brief-label">Prompt</span>
+                  <strong>
+                    {briefing.trim()
+                      ? `${briefing.trim().slice(0, 180)}${briefing.trim().length > 180 ? "..." : ""}`
+                      : "No prompt stored yet."}
+                  </strong>
+                </article>
+              </div>
+            </div>
           </section>
-        </section>
 
-        <section className="panel control-panel">
-          <div className="section-heading compact">
-            <h2>Run</h2>
-            <p>{desktopRuntime ? `Briefing is collected only when you click Generate Deck, and the exported deck targets exactly ${maxSlides} slides.` : "Preview mode only. Launch through Tauri for desktop generation."}</p>
-          </div>
-
-          <div className="control-grid">
-            <div className="status-block">
-              <p>{status}</p>
-              <p className="path-label">{outputPath || "No deck exported yet."}</p>
+          <section className="panel control-panel">
+            <div className="section-heading compact">
+              <h2>Run</h2>
+              <p>
+                {desktopRuntime
+                  ? `Briefing is collected only when you click Generate Deck, and the exported deck targets exactly ${maxSlides} slides.`
+                  : "Preview mode only. Launch through Tauri for desktop generation."}
+              </p>
             </div>
 
-            <div className="brief-hint">
-              <span>
-                {briefing
-                  ? `Brief stored • ${briefing.length} chars. Update it from Generate Deck.`
-                  : "No brief stored yet. Add it when you click Generate Deck."}
-              </span>
+            <div className="control-grid">
+              <div className="status-block">
+                <p>{status}</p>
+                <p className="path-label">{outputPath || "No deck exported yet."}</p>
+              </div>
+
+              <div className="quick-stats">
+                <article className="brief-summary-card">
+                  <span className="brief-label">Provider</span>
+                  <strong>{providerLabel}</strong>
+                </article>
+                <article className="brief-summary-card">
+                  <span className="brief-label">Image Model</span>
+                  <strong>{imageProvider.enabled ? imageProvider.model : "Disabled"}</strong>
+                </article>
+              </div>
+
+              <div className="action-row">
+                <button
+                  className="primary-button large"
+                  disabled={isBusy}
+                  onClick={openBriefModal}
+                  type="button"
+                >
+                  {isBusy ? "Working..." : "Generate Deck"}
+                </button>
+                <button
+                  className="ghost-button large"
+                  disabled={isBusy || !result}
+                  onClick={() => void (result ? exportDeck(result.outline) : Promise.resolve())}
+                  type="button"
+                >
+                  Save Again
+                </button>
+              </div>
             </div>
 
-            <div className="action-row">
-              <button
-                className="primary-button large"
-                disabled={isBusy}
-                onClick={openBriefModal}
-                type="button"
-              >
-                {isBusy ? "Working..." : "Generate Deck"}
-              </button>
-              <button
-                className="ghost-button large"
-                disabled={isBusy || !result}
-                onClick={() => void (result ? exportDeck(result.outline) : Promise.resolve())}
-                type="button"
-              >
-                Save Again
-              </button>
-            </div>
-          </div>
-
-          {error ? <div className="error-banner">{error}</div> : null}
-          {warning ? <div className="warning-banner">{warning}</div> : null}
+            {error ? <div className="error-banner">{error}</div> : null}
+            {warning ? <div className="warning-banner">{warning}</div> : null}
+          </section>
         </section>
 
         <section className="panel preview-panel">

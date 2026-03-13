@@ -26,11 +26,11 @@ body,
 body {
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.84)),
-    linear-gradient(90deg, rgba(7, 26, 46, 0.07) 1px, transparent 1px),
-    linear-gradient(rgba(7, 26, 46, 0.07) 1px, transparent 1px),
-    #d9e5f1;
-  background-size: auto, 24px 24px, 24px 24px, auto;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.9), rgba(243, 248, 255, 0.92)),
+    linear-gradient(90deg, rgba(7, 26, 46, 0.05) 1px, transparent 1px),
+    linear-gradient(rgba(7, 26, 46, 0.05) 1px, transparent 1px),
+    #dce7f3;
+  background-size: auto, 32px 32px, 32px 32px, auto;
   color: var(--ink);
 }
 
