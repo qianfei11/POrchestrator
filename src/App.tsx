@@ -82,7 +82,6 @@ function App() {
   const [warning, setWarning] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [isBriefModalOpen, setIsBriefModalOpen] = useState(false);
-  const [isBriefSnapshotOpen, setIsBriefSnapshotOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const totalCharacters = documents.reduce(
@@ -542,22 +541,18 @@ function App() {
               )}
             </div>
 
-            <div className="subsection brief-subsection">
-              <div className="section-heading compact inline-heading subsection-heading">
+            <details className="subsection brief-subsection foldable-window">
+              <summary className="section-heading compact inline-heading subsection-heading foldable-summary">
                 <div>
                   <h2>Brief Snapshot</h2>
                   <p>{briefSnapshotDigest}. The editor still opens only when you click Generate Deck.</p>
                 </div>
-                <button
-                  className="ghost-button section-toggle"
-                  onClick={() => setIsBriefSnapshotOpen((current) => !current)}
-                  type="button"
-                >
-                  {isBriefSnapshotOpen ? "Hide Snapshot" : "Show Snapshot"}
-                </button>
-              </div>
+                <span className="fold-indicator" aria-hidden="true">
+                  Toggle
+                </span>
+              </summary>
 
-              {isBriefSnapshotOpen ? (
+              <div className="brief-subsection-body">
                 <div className="brief-summary-grid">
                   <article className="brief-summary-card">
                     <span className="brief-label">Audience</span>
@@ -576,8 +571,8 @@ function App() {
                     </strong>
                   </article>
                 </div>
-              ) : null}
-            </div>
+              </div>
+            </details>
           </section>
 
           <section className="panel control-panel">

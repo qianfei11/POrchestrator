@@ -156,10 +156,11 @@ button {
 .workspace-main {
   grid-template-columns: minmax(0, 1.2fr) minmax(300px, 0.8fr);
   align-items: stretch;
+  grid-auto-rows: minmax(0, 1fr);
 }
 
 .workspace-main > .panel {
-  height: clamp(380px, 50vh, 520px);
+  height: clamp(320px, 42vh, 440px);
   overflow: hidden;
 }
 
@@ -167,6 +168,8 @@ button {
 .control-panel {
   display: grid;
   align-content: start;
+  min-height: 0;
+  height: 100%;
 }
 
 .source-panel {
@@ -484,9 +487,47 @@ textarea:disabled {
   margin-bottom: 10px;
 }
 
-.section-toggle {
+.foldable-window {
+  min-width: 0;
+}
+
+.foldable-summary {
+  list-style: none;
+  cursor: pointer;
+}
+
+.foldable-summary::-webkit-details-marker {
+  display: none;
+}
+
+.foldable-summary:hover .fold-indicator,
+.foldable-summary:focus-visible .fold-indicator {
+  background: var(--panel-hover);
+}
+
+.fold-indicator {
   flex: 0 0 auto;
-  min-width: 138px;
+  min-width: 92px;
+  padding: 10px 12px;
+  border: 2px solid var(--ink);
+  background: var(--panel-strong);
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: 0.98rem;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.fold-indicator::before {
+  content: "+ ";
+}
+
+.foldable-window[open] .fold-indicator::before {
+  content: "- ";
+}
+
+.brief-subsection-body {
+  padding-top: 2px;
 }
 
 .preview-empty {
