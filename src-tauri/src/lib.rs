@@ -1,4 +1,5 @@
 mod documents;
+mod images;
 mod llm;
 mod models;
 mod presentation;
@@ -42,13 +43,19 @@ async fn generate_outline(
 
 #[tauri::command]
 async fn export_presentation(request: ExportPresentationRequest) -> Result<ExportResult, String> {
-    presentation::write_presentation(&request.outline, &request.output_path)
+    let image_summary = images::generate_slide_images(&request.outline, &request.image_provider)
+        .await
+        .map_err(format_error)?;
+
+    presentation::write_presentation(&request.outline, &request.output_path, &image_summary.images)
         .map_err(format_error)?;
 
     Ok(ExportResult {
         output_path: request.output_path,
         deck_title: request.outline.deck_title,
         slide_count: request.outline.slides.len(),
+        generated_images: image_summary.generated,
+        warnings: image_summary.warnings,
     })
 }
 

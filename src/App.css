@@ -94,6 +94,7 @@
 .preview-summary p,
 .slide-card li,
 .slide-highlight,
+.slide-visual,
 .empty-state p,
 .totals span,
 .brief-hint span,
@@ -166,6 +167,7 @@ button {
 .document-card p,
 .preview-summary p,
 .slide-highlight,
+.slide-visual,
 .status-block p,
 .empty-state p,
 .brief-hint span {
@@ -251,6 +253,13 @@ textarea:focus {
   box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.14);
 }
 
+input:disabled,
+textarea:disabled {
+  background: #eef3fb;
+  color: var(--muted-ink);
+  cursor: not-allowed;
+}
+
 .api-note,
 .status-block,
 .empty-state,
@@ -327,6 +336,16 @@ textarea:focus {
   font-size: 0.98rem;
 }
 
+.warning-banner {
+  margin-top: 10px;
+  padding: 10px 12px;
+  border: 2px solid #d08a14;
+  background: #fff4dc;
+  color: var(--ink);
+  font-family: var(--body-font);
+  font-size: 0.98rem;
+}
+
 .action-row .large {
   flex: 1 1 0;
 }
@@ -354,6 +373,23 @@ textarea:focus {
 .slide-highlight {
   margin-top: 8px;
   color: var(--accent-strong);
+}
+
+.slide-visual {
+  margin-top: 8px;
+  color: var(--ink);
+}
+
+.subsection {
+  position: relative;
+  z-index: 1;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 2px solid var(--line);
+}
+
+.subsection-heading {
+  margin-bottom: 10px;
 }
 
 .preview-empty {

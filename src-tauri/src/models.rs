@@ -1,5 +1,17 @@
 use serde::{Deserialize, Serialize};
 
+fn default_image_base_url() -> String {
+    "https://api.openai.com/v1".to_string()
+}
+
+fn default_image_model() -> String {
+    "gpt-image-1".to_string()
+}
+
+fn default_image_size() -> String {
+    "1536x1024".to_string()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SourceDocument {
@@ -25,6 +37,33 @@ pub struct ProviderSettings {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ImageProviderSettings {
+    #[serde(default)]
+    pub enabled: bool,
+    #[serde(default = "default_image_base_url")]
+    pub base_url: String,
+    #[serde(default = "default_image_model")]
+    pub model: String,
+    #[serde(default)]
+    pub api_key: String,
+    #[serde(default = "default_image_size")]
+    pub size: String,
+}
+
+impl Default for ImageProviderSettings {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            base_url: default_image_base_url(),
+            model: default_image_model(),
+            api_key: String::new(),
+            size: default_image_size(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub enum ProviderKind {
     OpenaiCompatible,
     AnthropicCompatible,
@@ -41,6 +80,8 @@ pub struct GeneratePresentationRequest {
     #[serde(default)]
     pub desired_outcome: String,
     pub max_slides: u8,
+    #[serde(default)]
+    pub image_provider: ImageProviderSettings,
     #[serde(default)]
     pub documents: Vec<SourceDocument>,
 }
@@ -59,6 +100,8 @@ pub struct GenerationResult {
 pub struct ExportPresentationRequest {
     pub outline: DeckOutline,
     pub output_path: String,
+    #[serde(default)]
+    pub image_provider: ImageProviderSettings,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -67,6 +110,10 @@ pub struct ExportResult {
     pub output_path: String,
     pub deck_title: String,
     pub slide_count: usize,
+    #[serde(default)]
+    pub generated_images: usize,
+    #[serde(default)]
+    pub warnings: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,6 +137,10 @@ pub struct DeckSlide {
     pub speaker_notes: String,
     #[serde(default)]
     pub highlight: String,
+    #[serde(default)]
+    pub image_prompt: String,
+    #[serde(default)]
+    pub image_caption: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -99,5 +150,6 @@ pub enum SlideLayoutHint {
     #[default]
     Standard,
     TwoColumn,
+    Visual,
     Closing,
 }

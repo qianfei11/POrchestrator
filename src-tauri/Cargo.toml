@@ -11,6 +11,8 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 
 [dependencies]
 anyhow = "1.0.102"
+base64 = "0.22.1"
+image = { version = "0.25.8", default-features = false, features = ["jpeg", "png", "webp"] }
 pdf-extract = "0.10.0"
 ppt-rs = "0.2.6"
 quick-xml = "0.39.2"

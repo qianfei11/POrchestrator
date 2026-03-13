@@ -3,12 +3,14 @@ import { open, save } from "@tauri-apps/plugin-dialog";
 import { startTransition, useState } from "react";
 import "./App.css";
 import {
+  IMAGE_PROVIDER_PRESET,
   PROVIDER_PRESETS,
   type DeckOutline,
   type ExportPresentationRequest,
   type ExportResult,
   type GeneratePresentationRequest,
   type GenerationResult,
+  type ImageProviderSettings,
   type ProviderKind,
   type ProviderSettings,
   type SourceDocument,
@@ -16,6 +18,8 @@ import {
 
 const desktopRuntime =
   typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+const MIN_SLIDE_BUDGET = 4;
+const MAX_SLIDE_BUDGET = 20;
 
 function ensurePptxExtension(filePath: string) {
   return filePath.toLowerCase().endsWith(".pptx") ? filePath : `${filePath}.pptx`;
@@ -35,15 +39,36 @@ function buildProvider(kind: ProviderKind): ProviderSettings {
   return { ...PROVIDER_PRESETS[kind] };
 }
 
+function buildImageProvider(): ImageProviderSettings {
+  return { ...IMAGE_PROVIDER_PRESET };
+}
+
+function clampSlideBudget(input: number) {
+  if (!Number.isFinite(input)) {
+    return 8;
+  }
+
+  return Math.min(MAX_SLIDE_BUDGET, Math.max(MIN_SLIDE_BUDGET, Math.round(input)));
+}
+
 function providerSummary(kind: ProviderKind) {
   return kind === "openaiCompatible"
     ? "Uses /v1/chat/completions."
     : "Uses /v1/messages with the Anthropic version header.";
 }
 
+function imageProviderSummary(enabled: boolean) {
+  return enabled
+    ? "Uses /v1/images/generations for slide visuals."
+    : "Disabled. Enable it to render vivid images into cover and visual slides.";
+}
+
 function App() {
   const [provider, setProvider] = useState<ProviderSettings>(
     buildProvider("openaiCompatible"),
+  );
+  const [imageProvider, setImageProvider] = useState<ImageProviderSettings>(
+    buildImageProvider(),
   );
   const [briefing, setBriefing] = useState("");
   const [audience, setAudience] = useState("");
@@ -54,6 +79,7 @@ function App() {
   const [result, setResult] = useState<GenerationResult | null>(null);
   const [status, setStatus] = useState("Ready for source material or a brief.");
   const [error, setError] = useState("");
+  const [warning, setWarning] = useState("");
   const [isBusy, setIsBusy] = useState(false);
   const [isBriefModalOpen, setIsBriefModalOpen] = useState(false);
 
@@ -132,6 +158,26 @@ function App() {
     setStatus(providerSummary(kind));
   }
 
+  function updateProvider<K extends keyof ProviderSettings>(
+    key: K,
+    value: ProviderSettings[K],
+  ) {
+    setProvider((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
+  function updateImageProvider<K extends keyof ImageProviderSettings>(
+    key: K,
+    value: ImageProviderSettings[K],
+  ) {
+    setImageProvider((current) => ({
+      ...current,
+      [key]: value,
+    }));
+  }
+
   function openBriefModal() {
     setError("");
     setIsBriefModalOpen(true);
@@ -162,25 +208,39 @@ function App() {
     const request: ExportPresentationRequest = {
       outline,
       outputPath: ensurePptxExtension(selection),
+      imageProvider,
     };
 
+    setWarning("");
+    setStatus(
+      imageProvider.enabled
+        ? `Generating visuals and writing ${outline.deckTitle}...`
+        : `Writing ${outline.deckTitle}...`,
+    );
     const exportResult = await invoke<ExportResult>("export_presentation", {
       request,
     });
 
     setOutputPath(exportResult.outputPath);
+    setWarning(exportResult.warnings.join(" "));
     setStatus(
-      `Deck ready: ${exportResult.deckTitle} with ${exportResult.slideCount} slides.`,
+      `Deck ready: ${exportResult.deckTitle} with ${exportResult.slideCount} slides${exportResult.generatedImages ? ` and ${exportResult.generatedImages} generated visuals` : ""}.`,
     );
     return exportResult;
   }
 
   async function generateDeck() {
     setError("");
+    setWarning("");
     setOutputPath("");
 
     if (!provider.apiKey.trim()) {
       setError("An API key is required.");
+      return;
+    }
+
+    if (imageProvider.enabled && !imageProvider.apiKey.trim()) {
+      setError("An image API key is required when image generation is enabled.");
       return;
     }
 
@@ -195,6 +255,7 @@ function App() {
       audience,
       desiredOutcome,
       maxSlides,
+      imageProvider,
       documents,
     };
 
@@ -233,6 +294,10 @@ function App() {
             <div className="status-pill">
               <span>Provider</span>
               <strong>{provider.kind === "openaiCompatible" ? "OpenAI" : "Anthropic"}</strong>
+            </div>
+            <div className="status-pill">
+              <span>Visuals</span>
+              <strong>{imageProvider.enabled ? "On" : "Off"}</strong>
             </div>
             <div className="status-pill">
               <span>Slides</span>
@@ -274,12 +339,7 @@ function App() {
                 Base URL
                 <input
                   value={provider.baseUrl}
-                  onChange={(event) =>
-                    setProvider((current) => ({
-                      ...current,
-                      baseUrl: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => updateProvider("baseUrl", event.target.value)}
                   placeholder="https://api.openai.com/v1"
                 />
               </label>
@@ -287,12 +347,7 @@ function App() {
                 Model
                 <input
                   value={provider.model}
-                  onChange={(event) =>
-                    setProvider((current) => ({
-                      ...current,
-                      model: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => updateProvider("model", event.target.value)}
                   placeholder="gpt-4.1-mini"
                 />
               </label>
@@ -301,12 +356,7 @@ function App() {
                 <input
                   type="password"
                   value={provider.apiKey}
-                  onChange={(event) =>
-                    setProvider((current) => ({
-                      ...current,
-                      apiKey: event.target.value,
-                    }))
-                  }
+                  onChange={(event) => updateProvider("apiKey", event.target.value)}
                   placeholder="sk-..."
                 />
               </label>
@@ -319,10 +369,7 @@ function App() {
                   step="0.1"
                   value={provider.temperature}
                   onChange={(event) =>
-                    setProvider((current) => ({
-                      ...current,
-                      temperature: Number(event.target.value),
-                    }))
+                    updateProvider("temperature", Number(event.target.value))
                   }
                 />
               </label>
@@ -330,10 +377,12 @@ function App() {
                 Slide Budget
                 <input
                   type="number"
-                  min="4"
-                  max="12"
+                  min={MIN_SLIDE_BUDGET}
+                  max={MAX_SLIDE_BUDGET}
                   value={maxSlides}
-                  onChange={(event) => setMaxSlides(Number(event.target.value))}
+                  onChange={(event) =>
+                    setMaxSlides(clampSlideBudget(Number(event.target.value)))
+                  }
                 />
               </label>
             </div>
@@ -342,6 +391,84 @@ function App() {
               <strong>Defaults verified:</strong> OpenAI-compatible requests target
               `chat/completions`; Anthropic-compatible requests target `messages`
               with `anthropic-version: 2023-06-01`.
+            </div>
+
+            <div className="subsection">
+              <div className="section-heading compact subsection-heading">
+                <h2>Image Generation</h2>
+                <p>{imageProviderSummary(imageProvider.enabled)}</p>
+              </div>
+
+              <div className="segmented-control">
+                <button
+                  className={!imageProvider.enabled ? "active" : ""}
+                  onClick={() => updateImageProvider("enabled", false)}
+                  type="button"
+                >
+                  Visuals Off
+                </button>
+                <button
+                  className={imageProvider.enabled ? "active" : ""}
+                  onClick={() => updateImageProvider("enabled", true)}
+                  type="button"
+                >
+                  Visuals On
+                </button>
+              </div>
+
+              <div className="form-grid">
+                <label>
+                  Image Base URL
+                  <input
+                    disabled={!imageProvider.enabled}
+                    value={imageProvider.baseUrl}
+                    onChange={(event) =>
+                      updateImageProvider("baseUrl", event.target.value)
+                    }
+                    placeholder="https://api.openai.com/v1"
+                  />
+                </label>
+                <label>
+                  Image Model
+                  <input
+                    disabled={!imageProvider.enabled}
+                    value={imageProvider.model}
+                    onChange={(event) =>
+                      updateImageProvider("model", event.target.value)
+                    }
+                    placeholder="gpt-image-1 or nano-banana-2"
+                  />
+                </label>
+                <label className="span-2">
+                  Image API Key
+                  <input
+                    disabled={!imageProvider.enabled}
+                    type="password"
+                    value={imageProvider.apiKey}
+                    onChange={(event) =>
+                      updateImageProvider("apiKey", event.target.value)
+                    }
+                    placeholder="sk-..."
+                  />
+                </label>
+                <label>
+                  Image Size
+                  <input
+                    disabled={!imageProvider.enabled}
+                    value={imageProvider.size}
+                    onChange={(event) =>
+                      updateImageProvider("size", event.target.value)
+                    }
+                    placeholder="1536x1024"
+                  />
+                </label>
+              </div>
+
+              <div className="api-note">
+                <strong>Image API:</strong> OpenAI-compatible `images/generations`
+                with model names such as `gpt-image-1` or compatible deployments
+                like `nano-banana-2`.
+              </div>
             </div>
           </section>
 
@@ -397,7 +524,7 @@ function App() {
         <section className="panel control-panel">
           <div className="section-heading compact">
             <h2>Run</h2>
-            <p>{desktopRuntime ? "Briefing is collected only when you click Generate Deck." : "Preview mode only. Launch through Tauri for desktop generation."}</p>
+            <p>{desktopRuntime ? `Briefing is collected only when you click Generate Deck, and the exported deck targets exactly ${maxSlides} slides.` : "Preview mode only. Launch through Tauri for desktop generation."}</p>
           </div>
 
           <div className="control-grid">
@@ -435,6 +562,7 @@ function App() {
           </div>
 
           {error ? <div className="error-banner">{error}</div> : null}
+          {warning ? <div className="warning-banner">{warning}</div> : null}
         </section>
 
         <section className="panel preview-panel">
@@ -492,7 +620,7 @@ function App() {
                   value={briefing}
                   onChange={(event) => setBriefing(event.target.value)}
                   rows={8}
-                  placeholder="Summarize the uploaded material into a concise 8-slide product update for leadership..."
+                  placeholder={`Summarize the uploaded material into a concise ${maxSlides}-slide product update for leadership...`}
                 />
               </label>
             </div>
@@ -553,6 +681,11 @@ function DeckPreview({
               ))}
             </ul>
             <p className="slide-highlight">{slide.highlight}</p>
+            {slide.imagePrompt ? (
+              <p className="slide-visual">
+                Visual: {slide.imageCaption || "Generated image"}.
+              </p>
+            ) : null}
           </article>
         ))}
       </div>

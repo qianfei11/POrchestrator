@@ -8,6 +8,14 @@ export interface ProviderSettings {
   temperature: number;
 }
 
+export interface ImageProviderSettings {
+  enabled: boolean;
+  baseUrl: string;
+  model: string;
+  apiKey: string;
+  size: string;
+}
+
 export interface SourceDocument {
   name: string;
   path?: string | null;
@@ -23,20 +31,24 @@ export interface GeneratePresentationRequest {
   audience: string;
   desiredOutcome: string;
   maxSlides: number;
+  imageProvider: ImageProviderSettings;
   documents: SourceDocument[];
 }
 
 export interface ExportPresentationRequest {
   outline: DeckOutline;
   outputPath: string;
+  imageProvider: ImageProviderSettings;
 }
 
 export interface DeckSlide {
   title: string;
-  layout: "cover" | "standard" | "twoColumn" | "closing";
+  layout: "cover" | "standard" | "twoColumn" | "visual" | "closing";
   bullets: string[];
   speakerNotes: string;
   highlight: string;
+  imagePrompt: string;
+  imageCaption: string;
 }
 
 export interface DeckOutline {
@@ -57,6 +69,8 @@ export interface ExportResult {
   outputPath: string;
   deckTitle: string;
   slideCount: number;
+  generatedImages: number;
+  warnings: string[];
 }
 
 export const PROVIDER_PRESETS: Record<ProviderKind, ProviderSettings> = {
@@ -74,4 +88,12 @@ export const PROVIDER_PRESETS: Record<ProviderKind, ProviderSettings> = {
     apiKey: "",
     temperature: 0.4,
   },
+};
+
+export const IMAGE_PROVIDER_PRESET: ImageProviderSettings = {
+  enabled: false,
+  baseUrl: "https://api.openai.com/v1",
+  model: "gpt-image-1",
+  apiKey: "",
+  size: "1536x1024",
 };
