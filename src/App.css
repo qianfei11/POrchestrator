@@ -14,8 +14,6 @@
 
 .panel,
 .workspace,
-.left-column,
-.right-column,
 .document-card,
 .slide-card,
 .preview-summary,
@@ -29,14 +27,14 @@
   padding: 14px;
   border: 2px solid var(--ink);
   background: var(--panel);
-  box-shadow: 6px 6px 0 rgba(16, 34, 57, 0.08);
+  box-shadow: 7px 7px 0 rgba(4, 22, 39, 0.12);
 }
 
 .panel::after {
   content: "";
   position: absolute;
   inset: 6px;
-  border: 1px solid rgba(16, 34, 57, 0.09);
+  border: 1px solid rgba(4, 22, 39, 0.14);
   pointer-events: none;
 }
 
@@ -58,7 +56,9 @@
 .document-card,
 .status-block,
 .slide-meta,
-.action-row {
+.action-row,
+.control-grid,
+.brief-hint {
   position: relative;
   z-index: 1;
 }
@@ -83,7 +83,7 @@
 
 .brand h1 {
   font-family: var(--heading-font);
-  font-size: 1.1rem;
+  font-size: 1.08rem;
   line-height: 1.2;
 }
 
@@ -96,6 +96,7 @@
 .slide-highlight,
 .empty-state p,
 .totals span,
+.brief-hint span,
 label,
 input,
 textarea,
@@ -107,7 +108,7 @@ button {
 
 .summary {
   margin: 6px 0 0;
-  max-width: 600px;
+  max-width: 620px;
   color: var(--muted-ink);
 }
 
@@ -119,7 +120,7 @@ button {
 }
 
 .status-pill {
-  min-width: 96px;
+  min-width: 98px;
   padding: 9px 10px;
   border: 2px solid var(--ink);
   background: var(--panel-strong);
@@ -141,13 +142,7 @@ button {
 
 .workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1.16fr) minmax(320px, 0.84fr);
-  gap: 14px;
-}
-
-.left-column,
-.right-column {
-  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 14px;
 }
 
@@ -172,7 +167,8 @@ button {
 .preview-summary p,
 .slide-highlight,
 .status-block p,
-.empty-state p {
+.empty-state p,
+.brief-hint span {
   margin: 0;
   color: var(--muted-ink);
 }
@@ -209,6 +205,7 @@ button {
 .segmented-control button.active,
 .primary-button {
   background: var(--accent-soft);
+  color: var(--ink);
 }
 
 .segmented-control button:disabled,
@@ -241,7 +238,7 @@ textarea {
   width: 100%;
   max-width: 100%;
   border: 2px solid var(--ink);
-  background: #fffdf5;
+  background: #ffffff;
   color: var(--ink);
   padding: 10px 11px;
   resize: vertical;
@@ -251,12 +248,13 @@ textarea {
 input:focus,
 textarea:focus {
   border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(64, 156, 255, 0.12);
+  box-shadow: 0 0 0 3px rgba(11, 95, 255, 0.14);
 }
 
 .api-note,
 .status-block,
-.empty-state {
+.empty-state,
+.brief-hint {
   padding: 10px 12px;
   border: 2px solid var(--line);
   background: var(--panel-strong);
@@ -273,7 +271,8 @@ textarea:focus {
 .toolbar,
 .document-card,
 .slide-meta,
-.action-row {
+.action-row,
+.brief-hint {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -294,7 +293,8 @@ textarea:focus {
 
 .document-list,
 .slide-grid,
-.preview-grid {
+.preview-grid,
+.control-grid {
   display: grid;
   gap: 10px;
 }
@@ -318,17 +318,13 @@ textarea:focus {
 }
 
 .error-banner {
-  margin: 10px 0;
+  margin-top: 10px;
   padding: 10px 12px;
-  border: 2px solid #d44f4a;
-  background: #fff0ed;
+  border: 2px solid #c63b35;
+  background: #ffe8e4;
   color: var(--ink);
   font-family: var(--body-font);
   font-size: 0.98rem;
-}
-
-.action-row {
-  margin-top: 10px;
 }
 
 .action-row .large {
@@ -340,7 +336,7 @@ textarea:focus {
 }
 
 .theme-tag {
-  color: var(--accent);
+  color: var(--accent-strong);
 }
 
 .slide-grid {
@@ -364,6 +360,33 @@ textarea:focus {
   min-height: 120px;
   display: grid;
   place-items: center;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: rgba(4, 22, 39, 0.52);
+  backdrop-filter: blur(2px);
+  z-index: 20;
+}
+
+.brief-modal {
+  width: min(760px, 100%);
+  max-height: calc(100vh - 36px);
+  overflow: auto;
+  background: var(--panel-strong);
+}
+
+.modal-actions {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 14px;
 }
 
 @media (max-width: 980px) {
@@ -393,7 +416,9 @@ textarea:focus {
 
   .toolbar,
   .document-card,
-  .action-row {
+  .action-row,
+  .brief-hint,
+  .modal-actions {
     flex-direction: column;
     align-items: stretch;
   }

@@ -4,15 +4,15 @@
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  --ink: #102239;
-  --muted-ink: #526173;
-  --line: #cdd7e0;
-  --accent: #3f87f5;
-  --accent-soft: #e5f0ff;
-  --accent-strong: #1b5fca;
-  --panel: #f6f8fb;
+  --ink: #071a2e;
+  --muted-ink: #31465d;
+  --line: #8fa1b3;
+  --accent: #0b5fff;
+  --accent-soft: #d7e6ff;
+  --accent-strong: #083d9a;
+  --panel: #f8fbff;
   --panel-strong: #ffffff;
-  --panel-hover: #f2f6fc;
+  --panel-hover: #edf4ff;
   --heading-font: "Press Start 2P", cursive;
   --body-font: "Chakra Petch", sans-serif;
 }
@@ -26,10 +26,10 @@ body,
 body {
   margin: 0;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(255, 255, 255, 0.88)),
-    linear-gradient(90deg, rgba(16, 34, 57, 0.04) 1px, transparent 1px),
-    linear-gradient(rgba(16, 34, 57, 0.04) 1px, transparent 1px),
-    #e9eff5;
+    linear-gradient(180deg, rgba(255, 255, 255, 0.84), rgba(255, 255, 255, 0.84)),
+    linear-gradient(90deg, rgba(7, 26, 46, 0.07) 1px, transparent 1px),
+    linear-gradient(rgba(7, 26, 46, 0.07) 1px, transparent 1px),
+    #d9e5f1;
   background-size: auto, 24px 24px, 24px 24px, auto;
   color: var(--ink);
 }

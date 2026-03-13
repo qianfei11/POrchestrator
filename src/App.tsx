@@ -52,9 +52,10 @@ function App() {
   const [documents, setDocuments] = useState<SourceDocument[]>([]);
   const [outputPath, setOutputPath] = useState("");
   const [result, setResult] = useState<GenerationResult | null>(null);
-  const [status, setStatus] = useState("Waiting for a brief.");
+  const [status, setStatus] = useState("Ready for source material or a brief.");
   const [error, setError] = useState("");
   const [isBusy, setIsBusy] = useState(false);
+  const [isBriefModalOpen, setIsBriefModalOpen] = useState(false);
 
   const totalCharacters = documents.reduce(
     (total, document) => total + document.characters,
@@ -131,6 +132,17 @@ function App() {
     setStatus(providerSummary(kind));
   }
 
+  function openBriefModal() {
+    setError("");
+    setIsBriefModalOpen(true);
+  }
+
+  function closeBriefModal() {
+    if (!isBusy) {
+      setIsBriefModalOpen(false);
+    }
+  }
+
   async function exportDeck(outline: DeckOutline) {
     if (!desktopRuntime) {
       setError("Run Porchestrator inside the Tauri desktop shell to export PowerPoint files.");
@@ -188,6 +200,7 @@ function App() {
 
     try {
       setIsBusy(true);
+      setIsBriefModalOpen(false);
       setStatus("Generating slide outline...");
       const generation = await invoke<GenerationResult>("generate_outline", {
         request,
@@ -204,35 +217,35 @@ function App() {
   }
 
   return (
-    <main className="shell">
-      <header className="topbar panel">
-        <div className="brand">
-          <p className="eyebrow">AI PowerPoint Agent</p>
-          <h1>Porchestrator</h1>
-          <p className="summary">
-            Rust backend, native desktop shell, and a compact retro-tech interface
-            for generating decks from briefs and source files.
-          </p>
-        </div>
+    <>
+      <main className="shell">
+        <header className="topbar panel">
+          <div className="brand">
+            <p className="eyebrow">AI PowerPoint Agent</p>
+            <h1>Porchestrator</h1>
+            <p className="summary">
+              Rust backend, native desktop shell, and a tighter retro-tech layout
+              for turning source files into clean PowerPoint decks.
+            </p>
+          </div>
 
-        <div className="status-pills" aria-hidden="true">
-          <div className="status-pill">
-            <span>Provider</span>
-            <strong>{provider.kind === "openaiCompatible" ? "OpenAI" : "Anthropic"}</strong>
+          <div className="status-pills" aria-hidden="true">
+            <div className="status-pill">
+              <span>Provider</span>
+              <strong>{provider.kind === "openaiCompatible" ? "OpenAI" : "Anthropic"}</strong>
+            </div>
+            <div className="status-pill">
+              <span>Slides</span>
+              <strong>{maxSlides}</strong>
+            </div>
+            <div className="status-pill">
+              <span>Docs</span>
+              <strong>{documents.length}</strong>
+            </div>
           </div>
-          <div className="status-pill">
-            <span>Slides</span>
-            <strong>{maxSlides}</strong>
-          </div>
-          <div className="status-pill">
-            <span>Docs</span>
-            <strong>{documents.length}</strong>
-          </div>
-        </div>
-      </header>
+        </header>
 
-      <section className="workspace">
-        <div className="left-column">
+        <section className="workspace">
           <section className="panel">
             <div className="section-heading compact">
               <h2>LLM Settings</h2>
@@ -334,43 +347,6 @@ function App() {
 
           <section className="panel">
             <div className="section-heading compact">
-              <h2>Brief</h2>
-              <p>The LLM now supplies the deck title, and that title becomes the default output filename.</p>
-            </div>
-
-            <div className="form-grid">
-              <label>
-                Audience
-                <input
-                  value={audience}
-                  onChange={(event) => setAudience(event.target.value)}
-                  placeholder="Board, clients, leadership..."
-                />
-              </label>
-              <label>
-                Desired Outcome
-                <input
-                  value={desiredOutcome}
-                  onChange={(event) => setDesiredOutcome(event.target.value)}
-                  placeholder="Approval, decision, status update..."
-                />
-              </label>
-              <label className="span-2">
-                Prompt
-                <textarea
-                  value={briefing}
-                  onChange={(event) => setBriefing(event.target.value)}
-                  rows={8}
-                  placeholder="Summarize the uploaded material into a concise 8-slide product update for leadership..."
-                />
-              </label>
-            </div>
-          </section>
-        </div>
-
-        <div className="right-column">
-          <section className="panel">
-            <div className="section-heading compact">
               <h2>Source Material</h2>
               <p>Readable text is extracted before the model call and trimmed to stay inside prompt bounds.</p>
             </div>
@@ -416,25 +392,33 @@ function App() {
               )}
             </div>
           </section>
+        </section>
 
-          <section className="panel">
-            <div className="section-heading compact">
-              <h2>Run</h2>
-              <p>{desktopRuntime ? "Generate first, then save with the LLM title." : "Preview mode only. Launch through Tauri for desktop generation."}</p>
-            </div>
+        <section className="panel control-panel">
+          <div className="section-heading compact">
+            <h2>Run</h2>
+            <p>{desktopRuntime ? "Briefing is collected only when you click Generate Deck." : "Preview mode only. Launch through Tauri for desktop generation."}</p>
+          </div>
 
+          <div className="control-grid">
             <div className="status-block">
               <p>{status}</p>
               <p className="path-label">{outputPath || "No deck exported yet."}</p>
             </div>
 
-            {error ? <div className="error-banner">{error}</div> : null}
+            <div className="brief-hint">
+              <span>
+                {briefing
+                  ? `Brief stored • ${briefing.length} chars. Update it from Generate Deck.`
+                  : "No brief stored yet. Add it when you click Generate Deck."}
+              </span>
+            </div>
 
             <div className="action-row">
               <button
                 className="primary-button large"
                 disabled={isBusy}
-                onClick={() => void generateDeck()}
+                onClick={openBriefModal}
                 type="button"
               >
                 {isBusy ? "Working..." : "Generate Deck"}
@@ -448,25 +432,93 @@ function App() {
                 Save Again
               </button>
             </div>
+          </div>
+
+          {error ? <div className="error-banner">{error}</div> : null}
+        </section>
+
+        <section className="panel preview-panel">
+          <div className="section-heading compact">
+            <h2>Deck Preview</h2>
+            <p>Outline returned by the model before the PowerPoint file is written.</p>
+          </div>
+
+          {result ? (
+            <DeckPreview outline={result.outline} outputPath={outputPath} />
+          ) : (
+            <div className="empty-state preview-empty">
+              <p>Generate a deck to inspect the outline.</p>
+            </div>
+          )}
+        </section>
+      </main>
+
+      {isBriefModalOpen ? (
+        <div
+          className="modal-backdrop"
+          onClick={closeBriefModal}
+          role="presentation"
+        >
+          <section
+            aria-labelledby="brief-modal-title"
+            className="brief-modal panel"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="section-heading compact">
+              <h2 id="brief-modal-title">Brief</h2>
+              <p>Set the narrative only when you are ready to generate.</p>
+            </div>
+
+            <div className="form-grid">
+              <label>
+                Audience
+                <input
+                  value={audience}
+                  onChange={(event) => setAudience(event.target.value)}
+                  placeholder="Board, clients, leadership..."
+                />
+              </label>
+              <label>
+                Desired Outcome
+                <input
+                  value={desiredOutcome}
+                  onChange={(event) => setDesiredOutcome(event.target.value)}
+                  placeholder="Approval, decision, status update..."
+                />
+              </label>
+              <label className="span-2">
+                Prompt
+                <textarea
+                  value={briefing}
+                  onChange={(event) => setBriefing(event.target.value)}
+                  rows={8}
+                  placeholder="Summarize the uploaded material into a concise 8-slide product update for leadership..."
+                />
+              </label>
+            </div>
+
+            <div className="modal-actions">
+              <button
+                className="ghost-button large"
+                disabled={isBusy}
+                onClick={closeBriefModal}
+                type="button"
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-button large"
+                disabled={isBusy}
+                onClick={() => void generateDeck()}
+                type="button"
+              >
+                {isBusy ? "Working..." : "Generate and Save"}
+              </button>
+            </div>
           </section>
         </div>
-      </section>
-
-      <section className="panel preview-panel">
-        <div className="section-heading compact">
-          <h2>Deck Preview</h2>
-          <p>Outline returned by the model before the PowerPoint file is written.</p>
-        </div>
-
-        {result ? (
-          <DeckPreview outline={result.outline} outputPath={outputPath} />
-        ) : (
-          <div className="empty-state preview-empty">
-            <p>Generate a deck to inspect the outline.</p>
-          </div>
-        )}
-      </section>
-    </main>
+      ) : null}
+    </>
   );
 }
 
