@@ -515,6 +515,37 @@ function App() {
             </div>
 
             <div className="document-list">
+              <details className="brief-subsection foldable-window">
+                <summary className="section-heading compact inline-heading foldable-summary">
+                  <div>
+                    <h2>Brief Snapshot</h2>
+                    <p>{briefSnapshotDigest}. The editor still opens only when you click Generate Deck.</p>
+                  </div>
+                  <span className="fold-indicator" aria-hidden="true" />
+                </summary>
+
+                <div className="brief-subsection-body">
+                  <div className="brief-summary-grid">
+                    <article className="brief-summary-card">
+                      <span className="brief-label">Audience</span>
+                      <strong>{audience.trim() || "Not set"}</strong>
+                    </article>
+                    <article className="brief-summary-card">
+                      <span className="brief-label">Outcome</span>
+                      <strong>{desiredOutcome.trim() || "Not set"}</strong>
+                    </article>
+                    <article className="brief-summary-card span-2">
+                      <span className="brief-label">Prompt</span>
+                      <strong>
+                        {briefing.trim()
+                          ? `${briefing.trim().slice(0, 180)}${briefing.trim().length > 180 ? "..." : ""}`
+                          : "No prompt stored yet."}
+                      </strong>
+                    </article>
+                  </div>
+                </div>
+              </details>
+
               {documents.length ? (
                 documents.map((document) => (
                   <article className="document-card" key={document.path ?? document.name}>
@@ -540,39 +571,6 @@ function App() {
                 </div>
               )}
             </div>
-
-            <details className="subsection brief-subsection foldable-window">
-              <summary className="section-heading compact inline-heading subsection-heading foldable-summary">
-                <div>
-                  <h2>Brief Snapshot</h2>
-                  <p>{briefSnapshotDigest}. The editor still opens only when you click Generate Deck.</p>
-                </div>
-                <span className="fold-indicator" aria-hidden="true">
-                  Toggle
-                </span>
-              </summary>
-
-              <div className="brief-subsection-body">
-                <div className="brief-summary-grid">
-                  <article className="brief-summary-card">
-                    <span className="brief-label">Audience</span>
-                    <strong>{audience.trim() || "Not set"}</strong>
-                  </article>
-                  <article className="brief-summary-card">
-                    <span className="brief-label">Outcome</span>
-                    <strong>{desiredOutcome.trim() || "Not set"}</strong>
-                  </article>
-                  <article className="brief-summary-card span-2">
-                    <span className="brief-label">Prompt</span>
-                    <strong>
-                      {briefing.trim()
-                        ? `${briefing.trim().slice(0, 180)}${briefing.trim().length > 180 ? "..." : ""}`
-                        : "No prompt stored yet."}
-                    </strong>
-                  </article>
-                </div>
-              </div>
-            </details>
           </section>
 
           <section className="panel control-panel">
